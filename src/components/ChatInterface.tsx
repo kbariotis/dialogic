@@ -8,7 +8,16 @@ import {
   type UserProfile,
 } from "../lib/db";
 import { getSystemPrompt } from "../lib/prompt";
-import { LogOut, Send, Bot, User, Loader2, RefreshCw } from "lucide-react";
+import {
+  LogOut,
+  Send,
+  Bot,
+  User,
+  Loader2,
+  RefreshCw,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
 export const ChatInterface: React.FC<{
@@ -20,6 +29,7 @@ export const ChatInterface: React.FC<{
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>("");
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const handleAutoStartRef = useRef(false);
@@ -30,6 +40,19 @@ export const ChatInterface: React.FC<{
       inputRef.current.focus();
     }
   }, [isLoading]);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("app-theme") || "dark";
+    setTheme(savedTheme as "dark" | "light");
+    document.documentElement.setAttribute("data-theme", savedTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    localStorage.setItem("app-theme", newTheme);
+    document.documentElement.setAttribute("data-theme", newTheme);
+  };
 
   useEffect(() => {
     const initOrLoad = async () => {
@@ -209,6 +232,14 @@ export const ChatInterface: React.FC<{
           </h1>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            onClick={toggleTheme}
+            className="logout-button"
+            title="Toggle Theme"
+            style={{ padding: "0.5rem" }}
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           <button
             onClick={handleReset}
             className="logout-button"
