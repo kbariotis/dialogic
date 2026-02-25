@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "apple-touch-icon.png"],
       manifest: {
-        name: "Language Coach App",
-        short_name: "LanguageApp",
+        name: "Dialogic",
+        short_name: "Dialogic",
         description: "Language Coach application",
         theme_color: "transparent",
         background_color: "transparent",

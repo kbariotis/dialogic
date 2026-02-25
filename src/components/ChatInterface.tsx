@@ -229,7 +229,7 @@ export const ChatInterface: React.FC<{
             }}
           />
           <h1>
-            Language Coach{" "}
+            Dialogic{" "}
             <span
               style={{
                 fontSize: "0.75rem",
