@@ -1,4 +1,9 @@
-export function getSystemPrompt(profile, mistakeLog = []) {
+import { type UserProfile } from "./db";
+
+export function getSystemPrompt(
+  profile: UserProfile,
+  mistakeLog: { user_input: string; feedback: string }[] = [],
+) {
   const {
     language = "Spanish",
     level = "B1 intermediate",
@@ -9,7 +14,10 @@ export function getSystemPrompt(profile, mistakeLog = []) {
   if (mistakeLog && mistakeLog.length > 0) {
     const formattedMistakes = mistakeLog
       .filter(
-        (m) => m.feedback && !m.feedback.toLowerCase().includes("correct"),
+        (m) =>
+          m.feedback &&
+          !m.feedback.toLowerCase().includes("correct") &&
+          !m.feedback.toLowerCase().includes("no mistakes"),
       )
       .map((m) => `User: "${m.user_input}"\nFeedback: "${m.feedback}"`)
       .join("\n\n");
