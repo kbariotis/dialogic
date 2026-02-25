@@ -8,7 +8,7 @@ import {
   type UserProfile,
 } from "../lib/db";
 import { getSystemPrompt } from "../lib/prompt";
-import { LogOut, Send, Bot, User, Loader2 } from "lucide-react";
+import { LogOut, Send, Bot, User, Loader2, RefreshCw } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
 export const ChatInterface: React.FC<{
@@ -58,7 +58,7 @@ export const ChatInterface: React.FC<{
         const systemInstruction = getSystemPrompt(profile, []);
         setMessages([...newMessages, { role: "assistant", content: "" }]);
 
-        const { response, feedback } = await generateChatResponse(
+        const { response } = await generateChatResponse(
           provider,
           newMessages,
           systemInstruction,
@@ -67,7 +67,6 @@ export const ChatInterface: React.FC<{
         const finalAssistantMessage: Message = {
           role: "assistant",
           content: response,
-          feedback,
         };
         const finalMessages = [...newMessages, finalAssistantMessage];
 
@@ -113,6 +112,14 @@ export const ChatInterface: React.FC<{
     onLogout();
   };
 
+  const handleReset = () => {
+    const newId = uuidv4();
+    setConversationId(newId);
+    localStorage.setItem("activeConversation", newId);
+    setMessages([]);
+    handleAutoStartRef.current = false;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -126,7 +133,7 @@ export const ChatInterface: React.FC<{
     try {
       // Build mistake log from previous messages
       const mistakeLog = messages
-        .filter((m) => m.role === "assistant" && m.feedback)
+        .filter((m) => m.role === "assistant" && m.feedback && !m.isHidden)
         .map((m) => {
           // Find the preceding user message for context
           const userMsg = messages
@@ -194,14 +201,25 @@ export const ChatInterface: React.FC<{
             </span>
           </h1>
         </div>
-        <button
-          onClick={handleLogout}
-          className="logout-button"
-          title="Disconnect Provider"
-        >
-          <LogOut size={18} />
-          <span>Disconnect</span>
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            onClick={handleReset}
+            className="logout-button"
+            title="Restart Conversation"
+            disabled={isLoading}
+          >
+            <RefreshCw size={18} />
+            <span>Restart</span>
+          </button>
+          <button
+            onClick={handleLogout}
+            className="logout-button"
+            title="Disconnect Provider"
+          >
+            <LogOut size={18} />
+            <span>Disconnect</span>
+          </button>
+        </div>
       </header>
 
       <main className="chat-messages">
