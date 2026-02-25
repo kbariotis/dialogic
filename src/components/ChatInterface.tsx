@@ -23,6 +23,13 @@ export const ChatInterface: React.FC<{
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const handleAutoStartRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isLoading && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     const initOrLoad = async () => {
@@ -280,6 +287,7 @@ export const ChatInterface: React.FC<{
       <footer className="chat-footer glass-panel">
         <form onSubmit={handleSubmit} className="chat-form">
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -287,6 +295,9 @@ export const ChatInterface: React.FC<{
             className="chat-input"
             disabled={isLoading}
             autoFocus
+            autoComplete="on"
+            autoCorrect="on"
+            spellCheck={true}
           />
           <button
             type="submit"
