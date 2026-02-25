@@ -4,6 +4,7 @@ export type Provider = "openai" | "anthropic" | "gemini" | "ollama";
 
 export interface UserProfile {
   language: string;
+  baseLanguage: string;
   level: string;
   interests: string;
 }

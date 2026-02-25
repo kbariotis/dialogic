@@ -8,15 +8,23 @@ interface Props {
 
 export const ProfileModal: React.FC<Props> = ({ onProfileSaved }) => {
   const [language, setLanguage] = useState("");
+  const [baseLanguage, setBaseLanguage] = useState("English");
   const [level, setLevel] = useState("");
   const [interests, setInterests] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!language.trim() || !level.trim() || !interests.trim()) return;
+    if (
+      !language.trim() ||
+      !baseLanguage.trim() ||
+      !level.trim() ||
+      !interests.trim()
+    )
+      return;
 
     const profile: UserProfile = {
       language: language.trim(),
+      baseLanguage: baseLanguage.trim(),
       level: level.trim(),
       interests: interests.trim(),
     };
@@ -50,6 +58,16 @@ export const ProfileModal: React.FC<Props> = ({ onProfileSaved }) => {
             required
           />
 
+          <label style={labelStyle}>What is your base language?</label>
+          <input
+            type="text"
+            placeholder="e.g., English, Spanish, German"
+            value={baseLanguage}
+            onChange={(e) => setBaseLanguage(e.target.value)}
+            className="modal-input"
+            required
+          />
+
           <label style={labelStyle}>What is your current level?</label>
           <input
             type="text"
@@ -72,7 +90,12 @@ export const ProfileModal: React.FC<Props> = ({ onProfileSaved }) => {
 
           <button
             type="submit"
-            disabled={!language.trim() || !level.trim() || !interests.trim()}
+            disabled={
+              !language.trim() ||
+              !baseLanguage.trim() ||
+              !level.trim() ||
+              !interests.trim()
+            }
             className="modal-submit"
             style={{ marginTop: "1rem" }}
           >
