@@ -19,6 +19,7 @@ import {
   Moon,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+import logoImg from "../assets/logo.png";
 
 export const ChatInterface: React.FC<{
   provider: Provider;
@@ -216,7 +217,17 @@ export const ChatInterface: React.FC<{
     <div className="chat-container">
       <header className="chat-header glass-panel">
         <div className="chat-title">
-          <Bot size={24} className="header-icon" />
+          <img
+            src={logoImg}
+            alt="Logo"
+            className="header-icon"
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: "50%",
+              objectFit: "cover",
+            }}
+          />
           <h1>
             Language Coach{" "}
             <span
