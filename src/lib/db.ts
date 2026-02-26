@@ -26,8 +26,10 @@ interface LanguageCoachDB extends DBSchema {
         role: "user" | "assistant";
         content: string;
         feedback?: string;
+        isHidden?: boolean;
       }[];
       updatedAt: number;
+      report?: string;
     };
   };
 }
@@ -97,6 +99,7 @@ export async function saveConversation(
     role: "user" | "assistant";
     content: string;
     feedback?: string;
+    isHidden?: boolean;
   }[],
 ): Promise<void> {
   const db = await initDB();
@@ -110,13 +113,28 @@ export async function getConversation(id: string): Promise<
         role: "user" | "assistant";
         content: string;
         feedback?: string;
+        isHidden?: boolean;
       }[];
       updatedAt: number;
+      report?: string;
     }
   | undefined
 > {
   const db = await initDB();
   return db.get("conversations", id);
+}
+
+export async function saveConversationReport(
+  id: string,
+  report: string,
+): Promise<void> {
+  const db = await initDB();
+  const convo = await db.get("conversations", id);
+  if (convo) {
+    convo.report = report;
+    convo.updatedAt = Date.now();
+    await db.put("conversations", convo);
+  }
 }
 
 export async function clearApiKey(): Promise<void> {

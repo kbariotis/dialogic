@@ -43,3 +43,40 @@ Example Output (Structure example):
 }
 `.trim();
 }
+
+export function getReportPrompt(
+  profile: UserProfile,
+  mistakeLog: { user_input: string; feedback: string }[],
+) {
+  const {
+    language = "Spanish",
+    baseLanguage = "English",
+    level = "B1 intermediate",
+  } = profile || {};
+
+  const formattedMistakes = mistakeLog
+    .filter(
+      (m) =>
+        m.feedback &&
+        !m.feedback.toLowerCase().includes("correct") &&
+        !m.feedback.toLowerCase().includes("no mistakes"),
+    )
+    .map((m) => `- User said: "${m.user_input}"\n  Feedback: "${m.feedback}"`)
+    .join("\n");
+
+  return `
+Act as an expert ${language} language coach. The user has just completed a ${language} conversation scenario at a ${level} level.
+
+Based on the following list of mistakes and feedback from the session, generate a "Concepts to Review" report in ${baseLanguage}.
+
+=== MISTAKE LOG ===
+${formattedMistakes || "No significant mistakes were recorded."}
+
+Your report should:
+1. Identify 3-5 core linguistic concepts (grammar rules, vocabulary themes, or syntax patterns) the user struggled with.
+2. Provide a very brief explanation for each concept.
+3. Suggest a specific exercise or focus area for their next session.
+
+Format the output as a clean, professional summary. Use bullet points. Do NOT use JSON.
+`.trim();
+}

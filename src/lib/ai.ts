@@ -177,7 +177,7 @@ export async function generateChatResponse(
       cleanText = cleanText.replace(/^```/, "").replace(/```$/, "").trim();
     }
     parsedContent = JSON.parse(cleanText);
-  } catch (error) {
+  } catch {
     parsedContent = {
       response: "Lo siento, ha ocurrido un error.",
       feedback: `Failed to parse response. Raw: ${fullText.substring(0, 50)}...`,
@@ -189,4 +189,27 @@ export async function generateChatResponse(
     feedback: parsedContent.feedback || "",
     rawText: fullText,
   };
+}
+
+export async function generateReport(
+  provider: Provider,
+  systemInstruction: string,
+): Promise<string> {
+  // The report does not use JSON format, so we can return the raw stream text.
+  // We send a single generic user message because the system instruction
+  // already contains the full mistake log. Sending the actual conversation
+  // history (which ends in an assistant message) causes API validation errors.
+  const dummyMessage: Message = {
+    role: "user",
+    content:
+      "Please generate my performance report based on the system instructions.",
+  };
+
+  const reportText = await streamChat(
+    provider,
+    [dummyMessage],
+    systemInstruction,
+    () => {},
+  );
+  return reportText.trim();
 }

@@ -402,3 +402,43 @@ body {
     transform: translateX(4px);
   }
 }
+
+.report-panel {
+  border-radius: 16px;
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+}
+
+.report-panel h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.report-panel h3 {
+  color: var(--accent-color);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.report-panel p {
+  margin-bottom: 1rem;
+}
+
+.report-panel ul {
+  list-style-type: none;
+  margin-left: 0.5rem;
+}
+
+.report-panel li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.report-panel li::before {
+  content: "•";
+  color: var(--accent-color);
+  position: absolute;
+  left: 0.5rem;
+  font-weight: bold;
+}

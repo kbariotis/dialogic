@@ -1,25 +1,40 @@
 import { useState, useEffect, useRef } from "react";
-import { generateChatResponse, type Message } from "../lib/ai";
+import { generateChatResponse, generateReport, type Message } from "../lib/ai";
 import {
   clearAllCredentials,
   saveConversation,
   getConversation,
+  saveConversationReport,
   type Provider,
   type UserProfile,
 } from "../lib/db";
-import { getSystemPrompt } from "../lib/prompt";
-import {
-  LogOut,
-  Send,
-  Bot,
-  User,
-  Loader2,
-  RefreshCw,
-  Sun,
-  Moon,
-} from "lucide-react";
+import { getSystemPrompt, getReportPrompt } from "../lib/prompt";
+import { LogOut, Bot, User, Loader2, RefreshCw, Sun, Moon } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import logoImg from "../assets/logo.png";
+import { Report } from "./Report";
+import { ChatInput } from "./ChatInput";
+
+const MAX_TURNS = 1;
+
+/**
+ * Extracts and maps the relevant user mistakes and assistant feedback
+ * from the conversation history into the required Prompt schema array.
+ */
+const buildMistakeLog = (msgs: Message[]) => {
+  return msgs
+    .filter((m) => m.role === "assistant" && m.feedback && !m.isHidden)
+    .map((m) => {
+      const userMsg = msgs
+        .slice(0, msgs.indexOf(m))
+        .reverse()
+        .find((msg) => msg.role === "user");
+      return {
+        user_input: userMsg ? userMsg.content : "",
+        feedback: m.feedback!,
+      };
+    });
+};
 
 export const ChatInterface: React.FC<{
   provider: Provider;
@@ -27,20 +42,18 @@ export const ChatInterface: React.FC<{
   onLogout: () => void;
 }> = ({ provider, profile, onLogout }) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>("");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [report, setReport] = useState<string | null>(null);
+  const [isScenarioComplete, setIsScenarioComplete] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const handleAutoStartRef = useRef(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!isLoading && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isLoading]);
+  const turnCount = messages.filter(
+    (m) => m.role === "user" && !m.isHidden,
+  ).length;
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("app-theme") || "dark";
@@ -63,6 +76,27 @@ export const ChatInterface: React.FC<{
         if (convo) {
           setMessages(convo.messages);
           setConversationId(activeId);
+          // Check if the conversation was already completed
+          const userTurns = convo.messages.filter(
+            (m) => m.role === "user" && !m.isHidden,
+          ).length;
+          if (userTurns >= MAX_TURNS) {
+            setIsScenarioComplete(true);
+            if (convo.report) {
+              setReport(convo.report);
+            } else {
+              // Regenerate report if needed
+              const mistakeLog = buildMistakeLog(convo.messages);
+
+              const systemInstruction = getReportPrompt(profile, mistakeLog);
+              const finalReport = await generateReport(
+                provider,
+                systemInstruction,
+              );
+              setReport(finalReport);
+              await saveConversationReport(activeId, finalReport);
+            }
+          }
           return;
         }
       }
@@ -71,7 +105,7 @@ export const ChatInterface: React.FC<{
       localStorage.setItem("activeConversation", newId);
     };
     initOrLoad();
-  }, []);
+  }, [profile, provider]);
 
   useEffect(() => {
     const handleAutoStart = async () => {
@@ -127,7 +161,14 @@ export const ChatInterface: React.FC<{
       handleAutoStartRef.current = true;
       handleAutoStart();
     }
-  }, [conversationId, messages.length, isLoading, profile, provider]);
+  }, [
+    conversationId,
+    messages.length,
+    isLoading,
+    profile,
+    provider,
+    isScenarioComplete,
+  ]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -149,33 +190,21 @@ export const ChatInterface: React.FC<{
     localStorage.setItem("activeConversation", newId);
     setMessages([]);
     handleAutoStartRef.current = false;
+    setReport(null);
+    setIsScenarioComplete(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const handleSubmit = async (inputStr: string) => {
+    if (!inputStr.trim() || isLoading || isScenarioComplete) return;
 
-    const userMessage: Message = { role: "user", content: input };
+    const userMessage: Message = { role: "user", content: inputStr };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
-    setInput("");
     setIsLoading(true);
 
     try {
       // Build mistake log from previous messages
-      const mistakeLog = messages
-        .filter((m) => m.role === "assistant" && m.feedback && !m.isHidden)
-        .map((m) => {
-          // Find the preceding user message for context
-          const userMsg = messages
-            .slice(0, messages.indexOf(m))
-            .reverse()
-            .find((msg) => msg.role === "user");
-          return {
-            user_input: userMsg ? userMsg.content : "",
-            feedback: m.feedback!,
-          };
-        });
+      const mistakeLog = buildMistakeLog(messages);
 
       const systemInstruction = getSystemPrompt(profile, mistakeLog);
 
@@ -197,6 +226,25 @@ export const ChatInterface: React.FC<{
 
       setMessages(finalMessages);
       await saveConversation(conversationId, finalMessages);
+
+      // Check if scenario is complete
+      const updatedTurnCount = turnCount + 1;
+      if (updatedTurnCount >= MAX_TURNS) {
+        setIsScenarioComplete(true);
+        // Generate final report
+        const finalMistakeLog = buildMistakeLog(finalMessages);
+
+        const reportSystemInstruction = getReportPrompt(
+          profile,
+          finalMistakeLog,
+        );
+        const finalReport = await generateReport(
+          provider,
+          reportSystemInstruction,
+        );
+        setReport(finalReport);
+        await saveConversationReport(conversationId, finalReport);
+      }
     } catch (error) {
       console.error(error);
       setMessages((prev) => {
@@ -272,7 +320,9 @@ export const ChatInterface: React.FC<{
       </header>
 
       <main className="chat-messages">
-        {messages.filter((m) => !m.isHidden).length === 0 && !isLoading ? (
+        {report ? (
+          <Report report={report} onRestart={handleReset} />
+        ) : messages.filter((m) => !m.isHidden).length === 0 && !isLoading ? (
           <div className="empty-state">
             <Bot size={64} className="empty-icon" />
             <p>
@@ -327,28 +377,18 @@ export const ChatInterface: React.FC<{
       </main>
 
       <footer className="chat-footer glass-panel">
-        <form onSubmit={handleSubmit} className="chat-form">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={`Type in ${profile.language}...`}
-            className="chat-input"
-            disabled={isLoading}
-            autoFocus
-            autoComplete="on"
-            autoCorrect="on"
-            spellCheck={true}
+        {isScenarioComplete && !report ? (
+          <div className="scenario-complete-message">
+            <p>Scenario complete! Generating your report...</p>
+            <Loader2 className="animate-spin" size={24} />
+          </div>
+        ) : report ? null : (
+          <ChatInput
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+            language={profile.language}
           />
-          <button
-            type="submit"
-            className="chat-send"
-            disabled={!input.trim() || isLoading}
-          >
-            <Send size={20} />
-          </button>
-        </form>
+        )}
       </footer>
     </div>
   );
