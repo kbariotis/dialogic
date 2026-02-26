@@ -14,6 +14,8 @@ import { v4 as uuidv4 } from "uuid";
 import logoImg from "../assets/logo.png";
 import { Report } from "./Report";
 import { ChatInput } from "./ChatInput";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const MAX_TURNS = 1;
 
@@ -344,14 +346,21 @@ export const ChatInterface: React.FC<{
                   )}
                 </div>
                 <div className="message-content">
-                  {msg.content ||
-                    (msg.role === "assistant" &&
+                  {msg.role === "assistant" && msg.content ? (
+                    <div className="markdown-content">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : msg.content ? (
+                    msg.content
+                  ) : msg.role === "assistant" &&
                     isLoading &&
                     idx === arr.length - 1 ? (
-                      <Loader2 className="animate-spin" size={16} />
-                    ) : (
-                      ""
-                    ))}
+                    <Loader2 className="animate-spin" size={16} />
+                  ) : (
+                    ""
+                  )}
 
                   {msg.role === "assistant" && msg.feedback && (
                     <div

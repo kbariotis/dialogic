@@ -1,5 +1,7 @@
 import React from "react";
 import { FileText, RefreshCw } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ReportProps {
   report: string;
@@ -29,7 +31,9 @@ export const Report: React.FC<ReportProps> = ({ report, onRestart }) => {
       >
         <FileText size={24} /> Concepts to Review
       </h2>
-      <div style={{ fontSize: "1rem" }}>{report}</div>
+      <div style={{ fontSize: "1rem" }} className="markdown-content">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{report}</ReactMarkdown>
+      </div>
       <button
         onClick={onRestart}
         className="logout-button"
