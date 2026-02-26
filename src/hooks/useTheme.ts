@@ -1,19 +1,20 @@
-import { useState, useEffect } from "react";
+import { createContext, useContext } from "react";
+
+export type Theme = "dark" | "light";
+
+export interface ThemeContextType {
+  theme: Theme;
+  toggleTheme: () => void;
+}
+
+export const ThemeContext = createContext<ThemeContextType | undefined>(
+  undefined,
+);
 
 export function useTheme() {
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    const savedTheme = localStorage.getItem("app-theme");
-    return (savedTheme as "dark" | "light") || "dark";
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("app-theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
-  };
-
-  return { theme, toggleTheme };
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    throw new Error("useTheme must be used within a ThemeProvider");
+  }
+  return context;
 }
