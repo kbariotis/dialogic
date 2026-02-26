@@ -9,15 +9,25 @@ import {
   type UserProfile,
 } from "../lib/db";
 import { getSystemPrompt, getReportPrompt } from "../lib/prompt";
-import { LogOut, Bot, User, Loader2, RefreshCw, Sun, Moon } from "lucide-react";
+import {
+  LogOut,
+  Bot,
+  User,
+  Loader2,
+  RefreshCw,
+  Sun,
+  Moon,
+  FileText,
+} from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import logoImg from "../assets/logo.png";
 import { Report } from "./Report";
 import { ChatInput } from "./ChatInput";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useTheme } from "../hooks/useTheme";
 
-const MAX_TURNS = 1;
+const MAX_TURNS = 2;
 
 /**
  * Extracts and maps the relevant user mistakes and assistant feedback
@@ -46,9 +56,10 @@ export const ChatInterface: React.FC<{
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>("");
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const { theme, toggleTheme } = useTheme();
   const [report, setReport] = useState<string | null>(null);
   const [isScenarioComplete, setIsScenarioComplete] = useState(false);
+  const [isViewingReport, setIsViewingReport] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const handleAutoStartRef = useRef(false);
@@ -56,19 +67,6 @@ export const ChatInterface: React.FC<{
   const turnCount = messages.filter(
     (m) => m.role === "user" && !m.isHidden,
   ).length;
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("app-theme") || "dark";
-    setTheme(savedTheme as "dark" | "light");
-    document.documentElement.setAttribute("data-theme", savedTheme);
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-    localStorage.setItem("app-theme", newTheme);
-    document.documentElement.setAttribute("data-theme", newTheme);
-  };
 
   useEffect(() => {
     const initOrLoad = async () => {
@@ -194,6 +192,7 @@ export const ChatInterface: React.FC<{
     handleAutoStartRef.current = false;
     setReport(null);
     setIsScenarioComplete(false);
+    setIsViewingReport(false);
   };
 
   const handleSubmit = async (inputStr: string) => {
@@ -322,8 +321,8 @@ export const ChatInterface: React.FC<{
       </header>
 
       <main className="chat-messages">
-        {report ? (
-          <Report report={report} onRestart={handleReset} />
+        {report && isViewingReport ? (
+          <Report report={report} onClose={() => setIsViewingReport(false)} />
         ) : messages.filter((m) => !m.isHidden).length === 0 && !isLoading ? (
           <div className="empty-state">
             <Bot size={64} className="empty-icon" />
@@ -391,7 +390,54 @@ export const ChatInterface: React.FC<{
             <p>Scenario complete! Generating your report...</p>
             <Loader2 className="animate-spin" size={24} />
           </div>
-        ) : report ? null : (
+        ) : report ? (
+          <div style={{ display: "flex", gap: "1rem", width: "100%" }}>
+            <button
+              onClick={() => setIsViewingReport(true)}
+              className="view-report-button"
+              style={{
+                flex: 1,
+                padding: "1rem",
+                background: "var(--accent-color)",
+                color: "white",
+                borderRadius: "4px",
+                border: "none",
+                fontSize: "1rem",
+                cursor: "pointer",
+                fontWeight: "bold",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <FileText size={20} />
+              View My Report
+            </button>
+            <button
+              onClick={handleReset}
+              className="view-report-button"
+              style={{
+                flex: 1,
+                padding: "1rem",
+                background: "var(--bg-panel)",
+                color: "var(--text-primary)",
+                borderRadius: "4px",
+                border: "1px solid var(--border-color)",
+                fontSize: "1rem",
+                cursor: "pointer",
+                fontWeight: "bold",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <RefreshCw size={20} />
+              Start New Scenario
+            </button>
+          </div>
+        ) : (
           <ChatInput
             onSubmit={handleSubmit}
             isLoading={isLoading}

@@ -1,25 +1,41 @@
 import React from "react";
-import { FileText, RefreshCw } from "lucide-react";
+import { FileText, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 interface ReportProps {
   report: string;
-  onRestart: () => void;
+  onClose?: () => void;
 }
 
-export const Report: React.FC<ReportProps> = ({ report, onRestart }) => {
+export const Report: React.FC<ReportProps> = ({ report, onClose }) => {
   return (
     <div
       className="report-panel glass-panel"
       style={{
         padding: "2rem",
         margin: "1rem",
+        position: "relative",
         whiteSpace: "pre-wrap",
         lineHeight: "1.6",
         animation: "fadeIn 0.5s ease-out",
       }}
     >
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="logout-button"
+          style={{
+            position: "absolute",
+            top: "1rem",
+            right: "1rem",
+            padding: "0.5rem",
+          }}
+          title="Close Report"
+        >
+          <X size={20} />
+        </button>
+      )}
       <h2
         style={{
           marginBottom: "1rem",
@@ -34,21 +50,6 @@ export const Report: React.FC<ReportProps> = ({ report, onRestart }) => {
       <div style={{ fontSize: "1rem" }} className="markdown-content">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{report}</ReactMarkdown>
       </div>
-      <button
-        onClick={onRestart}
-        className="logout-button"
-        style={{
-          marginTop: "2rem",
-          width: "100%",
-          justifyContent: "center",
-          padding: "1rem",
-          background: "var(--accent-color)",
-          color: "white",
-        }}
-      >
-        <RefreshCw size={18} />
-        <span>Start New Scenario</span>
-      </button>
     </div>
   );
 };
