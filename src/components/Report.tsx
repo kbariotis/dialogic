@@ -9,6 +9,19 @@ interface ReportProps {
 }
 
 export const Report: React.FC<ReportProps> = ({ report, onClose }) => {
+  let parsedReport: {
+    human_summary: string;
+    concepts_to_review: string[];
+  };
+  try {
+    parsedReport = JSON.parse(report);
+  } catch {
+    parsedReport = {
+      human_summary: "Error: Could not parse generated report.",
+      concepts_to_review: [],
+    };
+  }
+
   return (
     <div
       className="report-panel glass-panel"
@@ -45,11 +58,47 @@ export const Report: React.FC<ReportProps> = ({ report, onClose }) => {
           color: "var(--accent-color)",
         }}
       >
-        <FileText size={24} /> Concepts to Review
+        <FileText size={24} /> Performance Report
       </h2>
+
       <div style={{ fontSize: "1rem" }} className="markdown-content">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{report}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {parsedReport.human_summary || ""}
+        </ReactMarkdown>
       </div>
+
+      {parsedReport.concepts_to_review &&
+        parsedReport.concepts_to_review.length > 0 && (
+          <div
+            style={{
+              marginTop: "2rem",
+              paddingTop: "1rem",
+              borderTop: "1px solid var(--border-color)",
+            }}
+          >
+            <h3
+              style={{
+                color: "var(--text-secondary)",
+                marginBottom: "0.5rem",
+                fontSize: "1.1rem",
+              }}
+            >
+              Targeted Concepts for Next Session
+            </h3>
+            <ul
+              style={{
+                paddingLeft: "1.5rem",
+                color: "var(--text-primary)",
+              }}
+            >
+              {parsedReport.concepts_to_review.map((concept, idx) => (
+                <li key={idx} style={{ marginBottom: "0.5rem" }}>
+                  {concept}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
     </div>
   );
 };

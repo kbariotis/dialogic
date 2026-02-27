@@ -5,6 +5,7 @@ import {
   saveConversation,
   getConversation,
   saveConversationReport,
+  getRecentReports,
   type Provider,
   type UserProfile,
 } from "../lib/db";
@@ -60,6 +61,7 @@ export const ChatInterface: React.FC<{
   const [report, setReport] = useState<string | null>(null);
   const [isScenarioComplete, setIsScenarioComplete] = useState(false);
   const [isViewingReport, setIsViewingReport] = useState(false);
+  const [conceptsToReview, setConceptsToReview] = useState<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const handleAutoStartRef = useRef(false);
@@ -70,6 +72,30 @@ export const ChatInterface: React.FC<{
 
   useEffect(() => {
     const initOrLoad = async () => {
+      let loadedConceptsToReview: string[] = [];
+
+      try {
+        const recentReports = await getRecentReports(3);
+        const allConcepts = new Set<string>();
+
+        recentReports.forEach((reportStr) => {
+          try {
+            const parsed = JSON.parse(reportStr);
+            if (parsed && Array.isArray(parsed.concepts_to_review)) {
+              parsed.concepts_to_review.forEach((c: string) =>
+                allConcepts.add(c),
+              );
+            }
+          } catch {
+            // Ignore parse errors from LLM output
+          }
+        });
+        loadedConceptsToReview = Array.from(allConcepts);
+        setConceptsToReview(loadedConceptsToReview);
+      } catch (err) {
+        console.error("Failed to load recent reports for concepts", err);
+      }
+
       const activeId = localStorage.getItem("activeConversation");
       if (activeId) {
         const convo = await getConversation(activeId);
@@ -120,7 +146,11 @@ export const ChatInterface: React.FC<{
       setIsLoading(true);
 
       try {
-        const systemInstruction = getSystemPrompt(profile, []);
+        const systemInstruction = getSystemPrompt(
+          profile,
+          [],
+          conceptsToReview,
+        );
         setMessages([...newMessages, { role: "assistant", content: "" }]);
 
         const { response } = await generateChatResponse(
@@ -168,6 +198,7 @@ export const ChatInterface: React.FC<{
     profile,
     provider,
     isScenarioComplete,
+    conceptsToReview,
   ]);
 
   const scrollToBottom = () => {
@@ -193,6 +224,26 @@ export const ChatInterface: React.FC<{
     setReport(null);
     setIsScenarioComplete(false);
     setIsViewingReport(false);
+    // conceptsToReview is preserved from the effect that runs on activeConversation change,
+    // but wait, the effect depends on `provider` and `profile`. We should fetch concepts here or let effect handle it.
+    // Actually, setting activeConversation will NOT trigger the effect because it's not in dependency array.
+    // Let's manually trigger the concept reload or update dependencies. For now, fetch inline.
+    getRecentReports(3).then((reports) => {
+      const allConcepts = new Set<string>();
+      reports.forEach((reportStr) => {
+        try {
+          const parsed = JSON.parse(reportStr);
+          if (parsed && Array.isArray(parsed.concepts_to_review)) {
+            parsed.concepts_to_review.forEach((c: string) =>
+              allConcepts.add(c),
+            );
+          }
+        } catch {
+          // ignore parsing error
+        }
+      });
+      setConceptsToReview(Array.from(allConcepts));
+    });
   };
 
   const handleSubmit = async (inputStr: string) => {
@@ -207,7 +258,11 @@ export const ChatInterface: React.FC<{
       // Build mistake log from previous messages
       const mistakeLog = buildMistakeLog(messages);
 
-      const systemInstruction = getSystemPrompt(profile, mistakeLog);
+      const systemInstruction = getSystemPrompt(
+        profile,
+        mistakeLog,
+        conceptsToReview,
+      );
 
       // Append blank assistant message to trigger loading spinner in UI
       setMessages([...newMessages, { role: "assistant", content: "" }]);

@@ -151,3 +151,19 @@ export async function saveProfile(profile: UserProfile): Promise<void> {
   const db = await initDB();
   await db.put("profile", profile, "user-profile");
 }
+
+export async function getRecentReports(limit: number = 5): Promise<string[]> {
+  const db = await initDB();
+  const tx = db.transaction("conversations", "readonly");
+  const store = tx.objectStore("conversations");
+  const allConversations = await store.getAll();
+
+  // Filter conversations that have a report, sort by updatedAt descending
+  const conversationsWithReports = allConversations
+    .filter((convo) => !!convo.report)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  return conversationsWithReports
+    .slice(0, limit)
+    .map((convo) => convo.report as string);
+}
