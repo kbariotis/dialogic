@@ -57,17 +57,15 @@ export async function validateProviderKey(
   }
 }
 
-export async function streamChat(
+export async function generateCompletion(
   provider: Provider,
   messages: Message[],
   systemInstruction: string,
-  onChunk: (chunk: string) => void,
 ): Promise<string> {
   const key = await getProviderKey(provider);
-  if (provider !== "ollama" && !key)
+  if (provider !== "ollama" && !key) {
     throw new Error(`Missing API key for ${provider}`);
-
-  let fullResponse = "";
+  }
 
   switch (provider) {
     case "openai": {
@@ -75,40 +73,27 @@ export async function streamChat(
         apiKey: key!,
         dangerouslyAllowBrowser: true,
       });
-      const stream = await client.chat.completions.create({
+      const response = await client.chat.completions.create({
         model: "gpt-4o",
         messages: [{ role: "system", content: systemInstruction }, ...messages],
-        stream: true,
       });
-      for await (const chunk of stream) {
-        const text = chunk.choices[0]?.delta?.content || "";
-        fullResponse += text;
-        onChunk(fullResponse);
-      }
-      break;
+      return response.choices[0]?.message?.content || "";
     }
     case "anthropic": {
       const client = new Anthropic({
         apiKey: key!,
         dangerouslyAllowBrowser: true,
       });
-      const stream = await client.messages.create({
+      const response = await client.messages.create({
         model: "claude-3-5-sonnet-latest",
         system: systemInstruction,
         messages: messages,
         max_tokens: 4096,
-        stream: true,
       });
-      for await (const chunk of stream) {
-        if (
-          chunk.type === "content_block_delta" &&
-          chunk.delta.type === "text_delta"
-        ) {
-          fullResponse += chunk.delta.text;
-          onChunk(fullResponse);
-        }
-      }
-      break;
+      return response.content
+        .filter((block) => block.type === "text")
+        .map((block) => block.text)
+        .join("");
     }
     case "gemini": {
       const ai = new GoogleGenerativeAI(key!);
@@ -120,33 +105,21 @@ export async function streamChat(
         role: m.role === "assistant" ? "model" : "user",
         parts: [{ text: m.content }],
       }));
-      const result = await model.generateContentStream({
+      const result = await model.generateContent({
         contents: formattedMessages,
       });
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
-        fullResponse += text;
-        onChunk(fullResponse);
-      }
-      break;
+      return result.response.text();
     }
     case "ollama": {
-      const host = key || "http://localhost:11434"; // key stores the host for ollama
+      const host = key || "http://localhost:11434";
       const client = new Ollama({ host });
-      const stream = await client.chat({
+      const response = await client.chat({
         model: "llama3", // default local model
         messages: [{ role: "system", content: systemInstruction }, ...messages],
-        stream: true,
       });
-      for await (const chunk of stream) {
-        fullResponse += chunk.message.content;
-        onChunk(fullResponse);
-      }
-      break;
+      return response.message.content;
     }
   }
-
-  return fullResponse;
 }
 
 export async function generateChatResponse(
@@ -159,15 +132,10 @@ export async function generateChatResponse(
   feedback: string;
   rawText: string;
 }> {
-  // Use streamChat to get the full raw text, ignoring the chunk updates.
-  // We format the history back to standard so the model sees past raw JSON or we just let it see what it generated.
-  // Wait, the prior AI prompt used JSON output. The assistant's past `content` was just the `response` string or the full JSON?
-  // CLI pushed `{ role: "model", parts: [{ text: responseText }] }` (so raw JSON block).
-  const fullText = await streamChat(
+  const fullText = await generateCompletion(
     provider,
     messages,
     systemInstruction,
-    () => {},
   );
 
   let parsedContent;
@@ -201,21 +169,16 @@ export async function generateReport(
   provider: Provider,
   systemInstruction: string,
 ): Promise<string> {
-  // The report does not use JSON format, so we can return the raw stream text.
-  // We send a single generic user message because the system instruction
-  // already contains the full mistake log. Sending the actual conversation
-  // history (which ends in an assistant message) causes API validation errors.
   const dummyMessage: Message = {
     role: "user",
     content:
       "Please generate my performance report based on the system instructions.",
   };
 
-  const reportText = await streamChat(
+  const reportText = await generateCompletion(
     provider,
     [dummyMessage],
     systemInstruction,
-    () => {},
   );
   return reportText.trim();
 }
