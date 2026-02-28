@@ -138,7 +138,7 @@ export const ChatInterface: React.FC<{
       const userMessage: Message = {
         role: "user",
         content:
-          "Let's start the role-play scenario. Please initiate the conversation.",
+          "Let's start the role-play scenario. Please initiate the conversation without responding to this message.",
         isHidden: true,
       };
       const newMessages = [userMessage];

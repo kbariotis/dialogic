@@ -153,7 +153,12 @@ export async function generateChatResponse(
   provider: Provider,
   messages: Message[],
   systemInstruction: string,
-): Promise<{ response: string; feedback: string; rawText: string }> {
+): Promise<{
+  thought: string;
+  response: string;
+  feedback: string;
+  rawText: string;
+}> {
   // Use streamChat to get the full raw text, ignoring the chunk updates.
   // We format the history back to standard so the model sees past raw JSON or we just let it see what it generated.
   // Wait, the prior AI prompt used JSON output. The assistant's past `content` was just the `response` string or the full JSON?
@@ -185,6 +190,7 @@ export async function generateChatResponse(
   }
 
   return {
+    thought: parsedContent.thought || "",
     response: parsedContent.response || "",
     feedback: parsedContent.feedback || "",
     rawText: fullText,
