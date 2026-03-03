@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { generateChatResponse, generateReport, type Message } from "../lib/ai";
+import { generateChatResponse, generateReport } from "../lib/ai";
 import {
   clearAllCredentials,
   saveConversation,
@@ -8,6 +8,7 @@ import {
   getRecentReports,
   type Provider,
   type UserProfile,
+  type Message,
 } from "../lib/db";
 import { getSystemPrompt, getReportPrompt } from "../lib/prompt";
 import {
@@ -20,7 +21,7 @@ import {
   Moon,
   FileText,
 } from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
+
 import logoImg from "../assets/logo.png";
 import { Report } from "./Report";
 import { ChatInput } from "./ChatInput";
@@ -52,11 +53,12 @@ const buildMistakeLog = (msgs: Message[]) => {
 export const ChatInterface: React.FC<{
   provider: Provider;
   profile: UserProfile;
+  conversationId: string;
   onLogout: () => void;
-}> = ({ provider, profile, onLogout }) => {
+  onReturnToList: () => void;
+}> = ({ provider, profile, conversationId, onLogout, onReturnToList }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string>("");
   const { theme, toggleTheme } = useTheme();
   const [report, setReport] = useState<string | null>(null);
   const [isScenarioComplete, setIsScenarioComplete] = useState(false);
@@ -96,12 +98,10 @@ export const ChatInterface: React.FC<{
         console.error("Failed to load recent reports for concepts", err);
       }
 
-      const activeId = localStorage.getItem("activeConversation");
-      if (activeId) {
-        const convo = await getConversation(activeId);
+      if (conversationId) {
+        const convo = await getConversation(conversationId);
         if (convo) {
           setMessages(convo.messages);
-          setConversationId(activeId);
           // Check if the conversation was already completed
           const userTurns = convo.messages.filter(
             (m) => m.role === "user" && !m.isHidden,
@@ -120,18 +120,15 @@ export const ChatInterface: React.FC<{
                 systemInstruction,
               );
               setReport(finalReport);
-              await saveConversationReport(activeId, finalReport);
+              await saveConversationReport(conversationId, finalReport);
             }
           }
           return;
         }
       }
-      const newId = uuidv4();
-      setConversationId(newId);
-      localStorage.setItem("activeConversation", newId);
     };
     initOrLoad();
-  }, [profile, provider]);
+  }, [profile, provider, conversationId]);
 
   useEffect(() => {
     const handleAutoStart = async () => {
@@ -211,39 +208,11 @@ export const ChatInterface: React.FC<{
 
   const handleLogout = async () => {
     await clearAllCredentials();
-    localStorage.removeItem("activeConversation");
     onLogout();
   };
 
-  const handleReset = () => {
-    const newId = uuidv4();
-    setConversationId(newId);
-    localStorage.setItem("activeConversation", newId);
-    setMessages([]);
-    handleAutoStartRef.current = false;
-    setReport(null);
-    setIsScenarioComplete(false);
-    setIsViewingReport(false);
-    // conceptsToReview is preserved from the effect that runs on activeConversation change,
-    // but wait, the effect depends on `provider` and `profile`. We should fetch concepts here or let effect handle it.
-    // Actually, setting activeConversation will NOT trigger the effect because it's not in dependency array.
-    // Let's manually trigger the concept reload or update dependencies. For now, fetch inline.
-    getRecentReports(3).then((reports) => {
-      const allConcepts = new Set<string>();
-      reports.forEach((reportStr) => {
-        try {
-          const parsed = JSON.parse(reportStr);
-          if (parsed && Array.isArray(parsed.concepts_to_review)) {
-            parsed.concepts_to_review.forEach((c: string) =>
-              allConcepts.add(c),
-            );
-          }
-        } catch {
-          // ignore parsing error
-        }
-      });
-      setConceptsToReview(Array.from(allConcepts));
-    });
+  const handleReturnToList = () => {
+    onReturnToList();
   };
 
   const handleSubmit = async (inputStr: string) => {
@@ -356,13 +325,13 @@ export const ChatInterface: React.FC<{
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           <button
-            onClick={handleReset}
+            onClick={handleReturnToList}
             className="logout-button"
-            title="Restart Conversation"
+            title="Return to Conversations"
             disabled={isLoading}
           >
             <RefreshCw size={18} />
-            <span>Restart</span>
+            <span>Conversations</span>
           </button>
           <button
             onClick={handleLogout}
@@ -470,7 +439,7 @@ export const ChatInterface: React.FC<{
               View My Report
             </button>
             <button
-              onClick={handleReset}
+              onClick={handleReturnToList}
               className="view-report-button"
               style={{
                 flex: 1,
@@ -489,7 +458,7 @@ export const ChatInterface: React.FC<{
               }}
             >
               <RefreshCw size={20} />
-              Start New Scenario
+              Conversations List
             </button>
           </div>
         ) : (

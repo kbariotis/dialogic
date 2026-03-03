@@ -9,6 +9,20 @@ export interface UserProfile {
   interests: string;
 }
 
+export interface Message {
+  role: "user" | "assistant";
+  content: string;
+  feedback?: string;
+  isHidden?: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  messages: Message[];
+  updatedAt: number;
+  report?: string;
+}
+
 interface LanguageCoachDB extends DBSchema {
   credentials: {
     key: string;
@@ -20,17 +34,7 @@ interface LanguageCoachDB extends DBSchema {
   };
   conversations: {
     key: string;
-    value: {
-      id: string;
-      messages: {
-        role: "user" | "assistant";
-        content: string;
-        feedback?: string;
-        isHidden?: boolean;
-      }[];
-      updatedAt: number;
-      report?: string;
-    };
+    value: Conversation;
   };
 }
 
@@ -95,31 +99,15 @@ export async function clearAllCredentials(): Promise<void> {
 
 export async function saveConversation(
   id: string,
-  messages: {
-    role: "user" | "assistant";
-    content: string;
-    feedback?: string;
-    isHidden?: boolean;
-  }[],
+  messages: Message[],
 ): Promise<void> {
   const db = await initDB();
   await db.put("conversations", { id, messages, updatedAt: Date.now() });
 }
 
-export async function getConversation(id: string): Promise<
-  | {
-      id: string;
-      messages: {
-        role: "user" | "assistant";
-        content: string;
-        feedback?: string;
-        isHidden?: boolean;
-      }[];
-      updatedAt: number;
-      report?: string;
-    }
-  | undefined
-> {
+export async function getConversation(
+  id: string,
+): Promise<Conversation | undefined> {
   const db = await initDB();
   return db.get("conversations", id);
 }
@@ -166,4 +154,17 @@ export async function getRecentReports(limit: number = 5): Promise<string[]> {
   return conversationsWithReports
     .slice(0, limit)
     .map((convo) => convo.report as string);
+}
+
+export async function getRecentConversations(
+  limit: number = 5,
+): Promise<Conversation[]> {
+  const db = await initDB();
+  const tx = db.transaction("conversations", "readonly");
+  const store = tx.objectStore("conversations");
+  const allConversations = await store.getAll();
+
+  return allConversations
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, limit);
 }

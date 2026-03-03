@@ -7,12 +7,17 @@ import {
 } from "./lib/db";
 import { ApiKeyModal } from "./components/ApiKeyModal";
 import { ChatInterface } from "./components/ChatInterface";
+import { ConversationList } from "./components/ConversationList";
 import { ProfileModal } from "./components/ProfileModal";
+import { v4 as uuidv4 } from "uuid";
 
 function App() {
   const [isChecking, setIsChecking] = useState(true);
   const [activeProvider, setActiveProvider] = useState<Provider | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<
+    string | undefined
+  >(undefined);
 
   useEffect(() => {
     const checkState = async () => {
@@ -39,11 +44,26 @@ function App() {
         <ApiKeyModal onValidKey={(provider) => setActiveProvider(provider)} />
       ) : !profile ? (
         <ProfileModal onProfileSaved={(p) => setProfile(p)} />
+      ) : activeConversationId === undefined ? (
+        <ConversationList
+          provider={activeProvider}
+          profile={profile}
+          onLogout={() => setActiveProvider(null)}
+          onSelectConversation={(id) => {
+            if (id) {
+              setActiveConversationId(id);
+            } else {
+              setActiveConversationId(uuidv4());
+            }
+          }}
+        />
       ) : (
         <ChatInterface
           provider={activeProvider}
           profile={profile}
+          conversationId={activeConversationId}
           onLogout={() => setActiveProvider(null)}
+          onReturnToList={() => setActiveConversationId(undefined)}
         />
       )}
     </div>

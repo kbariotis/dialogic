@@ -2,14 +2,7 @@ import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Ollama } from "ollama/browser";
-import { getProviderKey, type Provider } from "./db";
-
-export interface Message {
-  role: "user" | "assistant";
-  content: string;
-  feedback?: string;
-  isHidden?: boolean;
-}
+import { getProviderKey, type Provider, type Message } from "./db";
 
 export async function validateProviderKey(
   provider: Provider,
