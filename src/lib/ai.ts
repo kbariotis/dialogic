@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Ollama } from "ollama/browser";
-import { getProviderKey, type Provider, type Message } from "./db";
+import { getProviderKey, getProviderModel, type Provider, type Message } from "./db";
 
 export async function validateProviderKey(
   provider: Provider,
@@ -47,6 +47,17 @@ export async function validateProviderKey(
   } catch (error) {
     console.error(`Validation failed for ${provider}:`, error);
     return false;
+  }
+}
+
+export async function fetchOllamaModels(host: string): Promise<string[]> {
+  try {
+    const client = new Ollama({ host });
+    const response = await client.list();
+    return response.models.map((m) => m.name);
+  } catch (error) {
+    console.error("Failed to fetch Ollama models:", error);
+    return [];
   }
 }
 
@@ -105,9 +116,10 @@ export async function generateCompletion(
     }
     case "ollama": {
       const host = key || "http://localhost:11434";
+      const model = (await getProviderModel("ollama")) || "qwen3.5:9b";
       const client = new Ollama({ host });
       const response = await client.chat({
-        model: "qwen3.5:9b", // default local model
+        model: model,
         messages: [{ role: "system", content: systemInstruction }, ...messages],
       });
       return response.message.content;

@@ -96,6 +96,22 @@ export async function clearAllCredentials(): Promise<void> {
   await db.delete("credentials", "gemini-key");
   await db.delete("credentials", "ollama-key");
   await db.delete("credentials", "active-provider");
+  await db.delete("credentials", "ollama-model");
+}
+
+export async function setProviderModel(
+  provider: Provider,
+  model: string,
+): Promise<void> {
+  const db = await initDB();
+  await db.put("credentials", model, `${provider}-model`);
+}
+
+export async function getProviderModel(
+  provider: Provider,
+): Promise<string | undefined> {
+  const db = await initDB();
+  return db.get("credentials", `${provider}-model`);
 }
 
 export async function saveConversation(

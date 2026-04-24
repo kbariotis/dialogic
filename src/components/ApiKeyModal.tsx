@@ -1,7 +1,14 @@
-import { useState } from "react";
-import { setProviderKey, setActiveProvider, type Provider } from "../lib/db";
-import { validateProviderKey } from "../lib/ai";
-import { KeyRound, Server, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  setProviderKey,
+  setActiveProvider,
+  getProviderKey,
+  setProviderModel,
+  getProviderModel,
+  type Provider,
+} from "../lib/db";
+import { validateProviderKey, fetchOllamaModels } from "../lib/ai";
+import { KeyRound, Server, Loader2, RefreshCw, Check } from "lucide-react";
 
 interface Props {
   onValidKey: (provider: Provider) => void;
@@ -30,7 +37,50 @@ export const ApiKeyModal: React.FC<Props> = ({ onValidKey }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Ollama specific state
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
+
   const activeProvider = PROVIDERS.find((p) => p.id === provider)!;
+
+  const loadStoredConfig = useCallback(async (targetProvider: Provider) => {
+    const key = await getProviderKey(targetProvider);
+    if (key) setKeyValue(key);
+    else setKeyValue("");
+
+    if (targetProvider === "ollama") {
+      const url = key || "http://localhost:11434";
+      await handleConnectOllama(url);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStoredConfig(provider);
+  }, [provider, loadStoredConfig]);
+
+  const handleConnectOllama = async (url: string) => {
+    setIsConnecting(true);
+    setError("");
+    try {
+      const models = await fetchOllamaModels(url);
+      setAvailableModels(models);
+      if (models.length > 0) {
+        const storedModel = await getProviderModel("ollama");
+        if (storedModel && models.includes(storedModel)) {
+          setSelectedModel(storedModel);
+        } else {
+          setSelectedModel(models[0]);
+        }
+      } else {
+        setError("No models found on this Ollama instance.");
+      }
+    } catch (err) {
+      setError("Could not connect to Ollama. Ensure it is running.");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +89,6 @@ export const ApiKeyModal: React.FC<Props> = ({ onValidKey }) => {
     setLoading(true);
     setError("");
 
-    // Use default localhost if empty for ollama
     const finalKey =
       activeProvider.isLocal && !keyValue.trim()
         ? "http://localhost:11434"
@@ -49,6 +98,9 @@ export const ApiKeyModal: React.FC<Props> = ({ onValidKey }) => {
 
     if (isValid) {
       await setProviderKey(provider, finalKey);
+      if (provider === "ollama" && selectedModel) {
+        await setProviderModel("ollama", selectedModel);
+      }
       await setActiveProvider(provider);
       onValidKey(provider);
     } else {
@@ -93,7 +145,6 @@ export const ApiKeyModal: React.FC<Props> = ({ onValidKey }) => {
               type="button"
               onClick={() => {
                 setProvider(p.id);
-                setKeyValue("");
                 setError("");
               }}
               style={{
@@ -115,39 +166,112 @@ export const ApiKeyModal: React.FC<Props> = ({ onValidKey }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
-          <label
+          <div
             style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
               textAlign: "left",
-              fontSize: "0.9rem",
-              color: "var(--text-secondary)",
-              marginBottom: "-0.5rem",
-              marginLeft: "2px",
             }}
           >
-            {activeProvider.isLocal
-              ? "Ollama Host URL (e.g. http://localhost:11434)"
-              : `${activeProvider.name} API Key`}
-          </label>
-          <input
-            type={activeProvider.isLocal ? "url" : "password"}
-            placeholder={activeProvider.placeholder}
-            value={keyValue}
-            onChange={(e) => setKeyValue(e.target.value)}
-            disabled={loading}
-            className="modal-input"
-            autoComplete="off"
-            spellCheck="false"
-          />
+            <div>
+              <label
+                style={{
+                  fontSize: "0.9rem",
+                  color: "var(--text-secondary)",
+                  display: "block",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                {activeProvider.isLocal
+                  ? "Ollama Host URL"
+                  : `${activeProvider.name} API Key`}
+              </label>
+              <div style={{ position: "relative" }}>
+                <input
+                  type={activeProvider.isLocal ? "url" : "password"}
+                  placeholder={activeProvider.placeholder}
+                  value={keyValue}
+                  onChange={(e) => setKeyValue(e.target.value)}
+                  disabled={loading}
+                  className="modal-input"
+                  style={{ width: "100%", paddingRight: activeProvider.isLocal ? "40px" : "12px" }}
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+                {activeProvider.isLocal && (
+                  <button
+                    type="button"
+                    onClick={() => handleConnectOllama(keyValue || "http://localhost:11434")}
+                    disabled={isConnecting}
+                    style={{
+                      position: "absolute",
+                      right: "8px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      color: "var(--text-secondary)",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
+                    title="Refresh models"
+                  >
+                    {isConnecting ? (
+                      <Loader2 className="animate-spin" size={16} />
+                    ) : (
+                      <RefreshCw size={16} />
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {activeProvider.id === "ollama" && availableModels.length > 0 && (
+              <div>
+                <label
+                  style={{
+                    fontSize: "0.9rem",
+                    color: "var(--text-secondary)",
+                    display: "block",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Select Model
+                </label>
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="modal-input"
+                  style={{ width: "100%", appearance: "none", cursor: "pointer" }}
+                >
+                  {availableModels.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
           {error && <div className="modal-error">{error}</div>}
+          
           <button
             type="submit"
-            disabled={loading || (!keyValue.trim() && !activeProvider.isLocal)}
+            disabled={loading || isConnecting || (!keyValue.trim() && !activeProvider.isLocal)}
             className="modal-submit"
+            style={{ marginTop: "1rem" }}
           >
             {loading ? (
               <Loader2 className="animate-spin" size={20} />
             ) : activeProvider.isLocal ? (
-              "Connect to Localhost"
+              <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "center" }}>
+                <Check size={18} /> Confirm Configuration
+              </span>
             ) : (
               "Save Key"
             )}
