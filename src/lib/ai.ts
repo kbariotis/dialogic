@@ -123,6 +123,7 @@ export async function generateChatResponse(
   thought: string;
   response: string;
   feedback: string;
+  translation: string;
   rawText: string;
 }> {
   const fullText = await generateCompletion(
@@ -154,6 +155,7 @@ export async function generateChatResponse(
     thought: parsedContent.thought || "",
     response: parsedContent.response || "",
     feedback: parsedContent.feedback || "",
+    translation: parsedContent.translation || "",
     rawText: fullText,
   };
 }

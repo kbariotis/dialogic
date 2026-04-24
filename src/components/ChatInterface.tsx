@@ -14,7 +14,6 @@ import { getSystemPrompt, getReportPrompt } from "../lib/prompt";
 import {
   LogOut,
   Bot,
-  User,
   Loader2,
   RefreshCw,
   Sun,
@@ -25,8 +24,7 @@ import {
 import logoImg from "../assets/logo.png";
 import { Report } from "./Report";
 import { ChatInput } from "./ChatInput";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MessageBubble } from "./MessageBubble";
 import { useTheme } from "../hooks/useTheme";
 
 const MAX_TURNS = 2;
@@ -150,7 +148,7 @@ export const ChatInterface: React.FC<{
         );
         setMessages([...newMessages, { role: "assistant", content: "" }]);
 
-        const { response } = await generateChatResponse(
+        const { response, translation } = await generateChatResponse(
           provider,
           newMessages,
           systemInstruction,
@@ -159,6 +157,7 @@ export const ChatInterface: React.FC<{
         const finalAssistantMessage: Message = {
           role: "assistant",
           content: response,
+          translation: translation || undefined,
         };
         const finalMessages = [...newMessages, finalAssistantMessage];
 
@@ -236,7 +235,7 @@ export const ChatInterface: React.FC<{
       // Append blank assistant message to trigger loading spinner in UI
       setMessages([...newMessages, { role: "assistant", content: "" }]);
 
-      const { response, feedback } = await generateChatResponse(
+      const { response, feedback, translation } = await generateChatResponse(
         provider,
         newMessages,
         systemInstruction,
@@ -246,6 +245,7 @@ export const ChatInterface: React.FC<{
         role: "assistant",
         content: response,
         feedback,
+        translation: translation || undefined,
       };
       const finalMessages = [...newMessages, finalAssistantMessage];
 
@@ -360,49 +360,12 @@ export const ChatInterface: React.FC<{
           messages
             .filter((m) => !m.isHidden)
             .map((msg, idx, arr) => (
-              <div key={idx} className={`message-wrapper ${msg.role}`}>
-                <div className="message-avatar">
-                  {msg.role === "assistant" ? (
-                    <Bot size={20} />
-                  ) : (
-                    <User size={20} />
-                  )}
-                </div>
-                <div className="message-content">
-                  {msg.role === "assistant" && msg.content ? (
-                    <div className="markdown-content">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.content}
-                      </ReactMarkdown>
-                    </div>
-                  ) : msg.content ? (
-                    msg.content
-                  ) : msg.role === "assistant" &&
-                    isLoading &&
-                    idx === arr.length - 1 ? (
-                    <Loader2 className="animate-spin" size={16} />
-                  ) : (
-                    ""
-                  )}
-
-                  {msg.role === "assistant" && msg.feedback && (
-                    <div
-                      className="feedback-box"
-                      style={{
-                        marginTop: "0.75rem",
-                        padding: "0.75rem",
-                        background: "rgba(239, 68, 68, 0.1)",
-                        borderLeft: "3px solid var(--accent-color)",
-                        borderRadius: "4px",
-                        fontSize: "0.85rem",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      <strong>Feedback:</strong> {msg.feedback}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <MessageBubble
+                key={idx}
+                message={msg}
+                isLoading={isLoading}
+                isLastMessage={idx === arr.length - 1}
+              />
             ))
         )}
         <div ref={messagesEndRef} />

@@ -13,6 +13,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   feedback?: string;
+  translation?: string;
   isHidden?: boolean;
 }
 

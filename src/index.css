@@ -442,3 +442,58 @@ body {
   left: 0.5rem;
   font-weight: bold;
 }
+
+/* Translation Toggle & Block */
+.translation-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  padding: 0.3rem 0.65rem;
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.translation-toggle:hover {
+  background: rgba(45, 212, 191, 0.1);
+  border-color: rgba(45, 212, 191, 0.4);
+  color: #2dd4bf;
+}
+
+.translation-toggle[aria-expanded="true"] {
+  background: rgba(45, 212, 191, 0.1);
+  border-color: rgba(45, 212, 191, 0.3);
+  color: #2dd4bf;
+}
+
+.translation-block {
+  margin-top: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(45, 212, 191, 0.06);
+  border-left: 3px solid rgba(45, 212, 191, 0.5);
+  border-radius: 4px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  font-style: italic;
+  animation: translationSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes translationSlideIn {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+    transform: translateY(0);
+  }
+}
