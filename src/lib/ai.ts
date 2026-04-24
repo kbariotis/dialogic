@@ -107,7 +107,7 @@ export async function generateCompletion(
       const host = key || "http://localhost:11434";
       const client = new Ollama({ host });
       const response = await client.chat({
-        model: "llama3", // default local model
+        model: "qwen3.5:9b", // default local model
         messages: [{ role: "system", content: systemInstruction }, ...messages],
       });
       return response.message.content;

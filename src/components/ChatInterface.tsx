@@ -133,7 +133,7 @@ export const ChatInterface: React.FC<{
       const userMessage: Message = {
         role: "user",
         content:
-          "Let's start the role-play scenario. Please initiate the conversation without responding to this message.",
+          "Start a unique, pleasant, and UNEXPECTED role-play scenario now. Send a very brief opening message (1 sentence) to get us started. BE CREATIVE: pick a niche sub-topic from the interests and avoid obvious associations (e.g., NO recipes if the interest is cooking). Do not explain the setup or describe the scene.",
         isHidden: true,
       };
       const newMessages = [userMessage];
