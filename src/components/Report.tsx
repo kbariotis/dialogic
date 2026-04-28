@@ -14,7 +14,13 @@ export const Report: React.FC<ReportProps> = ({ report, onClose }) => {
     concepts_to_review: string[];
   };
   try {
-    parsedReport = JSON.parse(report);
+    let cleanReport = report.trim();
+    if (cleanReport.startsWith("```json")) {
+      cleanReport = cleanReport.replace(/^```json/, "").replace(/```$/, "").trim();
+    } else if (cleanReport.startsWith("```")) {
+      cleanReport = cleanReport.replace(/^```/, "").replace(/```$/, "").trim();
+    }
+    parsedReport = JSON.parse(cleanReport);
   } catch {
     parsedReport = {
       human_summary: "Error: Could not parse generated report.",

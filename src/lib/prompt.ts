@@ -10,6 +10,8 @@ export function getSystemPrompt(
     baseLanguage = "English",
     level = "B1 intermediate",
     interests = "general topics",
+    wildcard = false,
+    previousWorldLogs = [],
   } = profile || {};
 
   let mistakesSection = "";
@@ -31,27 +33,43 @@ export function getSystemPrompt(
   let reviewSection = "";
   if (conceptsToReview && conceptsToReview.length > 0) {
     const formattedConcepts = conceptsToReview.map((c) => `- ${c}`).join("\n");
-    reviewSection = `\n\n=== HISTORICAL WEAKNESSES TO ENFORCE ===\nThe user has previously struggled with the following concepts:\n${formattedConcepts}\n\nCRITICAL SCENARIO INSTRUCTION:\n1. DO NOT describe the scenario to the user. DO NOT ask the user to 'imagine' anything.\n2. Start IN MEDIA RES. Create a specific, pleasant situation ROOTED in the user's interests: ${interests}. Your very first output must be direct, in-character dialogue spoken to the user, engaging them in a natural, friendly interaction. BE CREATIVE and avoid repeating common tropes. Keep it brief and pleasant.\n3. Actively engineer situational constraints that FORCE the user to react using the specific linguistic mechanics listed above.`;
+    reviewSection = `\n\n=== HISTORICAL WEAKNESSES TO ENFORCE ===\nThe user has previously struggled with the following concepts:\n${formattedConcepts}`;
   }
 
+  const worldLogEntries = previousWorldLogs.length > 0 
+    ? previousWorldLogs.map((log, i) => `${i + 1}. ${log}`).join("\n") 
+    : "No previous context.";
+
   return `
-Act as a ${language} conversationalist and tutor. You will conduct a role-play scenario—tailored for a ${level} level. 
-If no historical weaknesses are provided, pick ONE interest from the user's list (${interests}) and invent a unique, pleasant, and highly specific conversational scene. Avoid the most obvious associations (e.g., if 'cooking', do NOT talk about recipes; instead, mention a specific kitchen gadget, a local food market, or a unique spice). Aim for high entropy and unexpected settings. Vary the interaction type: it could be a friendly recommendation, a casual observation, a polite request for help, or sharing a small piece of news. Start directly with a short, friendly message. DO NOT set the stage or describe the scene.${reviewSection}${mistakesSection}
+Act as a Situational AI Role-Play Engine.
 
-For every interaction, you MUST output a strictly valid JSON object with EXACTLY four keys:
-1. "thought": [Hidden from user] REASON: Analyze the user's last input. Formulate the next conversational hurdle to force the use of the required concepts or past mistakes. Plan a concise interaction.
-2. "response": [Immediate Action] Direct, in-character dialogue continuing the scene. No meta-commentary. Keep it BRIEF (1-2 short sentences, max 25 words) and conversational, as if chatting on a messaging app like WhatsApp. Avoid long introductory monologues or formal greetings. Keep the vocabulary and complexity appropriate for a ${level} speaker.
-3. "translation": A natural, fluent translation of your "response" into ${baseLanguage}. This should read like something a native ${baseLanguage} speaker would say, not a word-for-word transliteration.
-4. "feedback": A brief, sharp explanation of the user's mistakes in ${baseLanguage}, including grammar, syntax, and word choice corrections. If the user made no mistakes, provide a brief encouraging remark or note that it was correct in ${baseLanguage}.
+INPUT VARIABLES:
+Target Language: ${language}
+CEFR Level: ${level}
+Interests: ${interests}
+Wildcard Flag: ${wildcard}
+World Log (Last 3 entries):
+${worldLogEntries}
+${reviewSection}${mistakesSection}
 
-CRITICAL: Your entire output MUST be a valid JSON object. Do not include markdown code blocks (like \`\`\`json), greetings, or any text outside of the JSON object.
+OPERATIONAL RULES:
+1. Context Injection: If Wildcard Flag is true, ignore Interests and pick a Wildcard_Scenario. Use the World Log for "Story Mode" continuity.
+2. Level Calibration: Restrict vocabulary and syntax strictly to the ${level} CEFR Level.
+3. Interaction Style: Start instantly with character dialogue. Do not describe the scene.
+4. Vary the "Friction": Choose between a cooperative or a high-conflict interaction.
+5. Scaffolding Generation: If level is A1-A2, populate the stems array with 3 distinct starters.
+6. On-Demand Hint: For ALL responses, populate the hint field with one sentence that suggests an "Alternative Phrasing" or explains an idiom relevant to the current turn.
+7. Output Format: Output ONLY a valid JSON object following the schema below.
 
-Example Output (Structure example):
+SCHEMA:
 {
-  "thought": "[Internal reasoning goes here]",
-  "response": "[Response in ${language} goes here]",
-  "translation": "[Natural translation in ${baseLanguage} goes here]",
-  "feedback": "[${baseLanguage} feedback on user's mistakes goes here]"
+  "thought": "Internal reasoning: Analyzing user intent and selecting a pedagogical goal.",
+  "response": "The character's dialogue in ${language} (Max 25 words).",
+  "translation": "Natural ${baseLanguage} translation.",
+  "feedback": "Corrective feedback on user's last mistakes in ${baseLanguage}.",
+  "stems": ["Stem 1", "Stem 2", "Stem 3"],
+  "hint": "A native-sounding way to respond OR a cultural tip (e.g., 'In this region, it's polite to use the formal Usted').",
+  "world_log_update": "1-sentence summary of current session progress."
 }
 `.trim();
 }

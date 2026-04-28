@@ -7,13 +7,20 @@ export interface UserProfile {
   baseLanguage: string;
   level: string;
   interests: string;
+  wildcard?: boolean;
+  worldLog?: string;
+  previousWorldLogs?: string[];
 }
 
 export interface Message {
   role: "user" | "assistant";
   content: string;
+  thought?: string;
   feedback?: string;
   translation?: string;
+  stems?: string[];
+  hint?: string;
+  worldLog?: string;
   isHidden?: boolean;
 }
 

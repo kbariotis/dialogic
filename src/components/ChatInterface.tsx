@@ -27,7 +27,7 @@ import { ChatInput } from "./ChatInput";
 import { MessageBubble } from "./MessageBubble";
 import { useTheme } from "../hooks/useTheme";
 
-const MAX_TURNS = 2;
+const MAX_TURNS = 10;
 
 /**
  * Extracts and maps the relevant user mistakes and assistant feedback
@@ -62,6 +62,7 @@ export const ChatInterface: React.FC<{
   const [isScenarioComplete, setIsScenarioComplete] = useState(false);
   const [isViewingReport, setIsViewingReport] = useState(false);
   const [conceptsToReview, setConceptsToReview] = useState<string[]>([]);
+  const [isWildcard] = useState(() => Math.random() < 0.2);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const handleAutoStartRef = useRef(false);
@@ -141,23 +142,25 @@ export const ChatInterface: React.FC<{
       setIsLoading(true);
 
       try {
+        const previousWorldLogs = profile.previousWorldLogs || [];
         const systemInstruction = getSystemPrompt(
-          profile,
+          { ...profile, wildcard: isWildcard, previousWorldLogs },
           [],
           conceptsToReview,
         );
         setMessages([...newMessages, { role: "assistant", content: "" }]);
 
-        const { response, translation } = await generateChatResponse(
-          provider,
-          newMessages,
-          systemInstruction,
-        );
+        const { response, translation, thought, stems, hint, worldLog } =
+          await generateChatResponse(provider, newMessages, systemInstruction);
 
         const finalAssistantMessage: Message = {
           role: "assistant",
           content: response,
           translation: translation || undefined,
+          thought,
+          stems,
+          hint,
+          worldLog,
         };
         const finalMessages = [...newMessages, finalAssistantMessage];
 
@@ -191,6 +194,7 @@ export const ChatInterface: React.FC<{
     conversationId,
     messages.length,
     isLoading,
+    isWildcard,
     profile,
     provider,
     isScenarioComplete,
@@ -226,8 +230,18 @@ export const ChatInterface: React.FC<{
       // Build mistake log from previous messages
       const mistakeLog = buildMistakeLog(messages);
 
+      // Get the latest world logs
+      const previousWorldLogs = messages
+        .filter((m) => m.role === "assistant" && m.worldLog)
+        .slice(-3)
+        .map((m) => m.worldLog as string);
+
+      if (previousWorldLogs.length === 0 && profile.previousWorldLogs) {
+        previousWorldLogs.push(...profile.previousWorldLogs);
+      }
+
       const systemInstruction = getSystemPrompt(
-        profile,
+        { ...profile, wildcard: isWildcard, previousWorldLogs },
         mistakeLog,
         conceptsToReview,
       );
@@ -235,17 +249,25 @@ export const ChatInterface: React.FC<{
       // Append blank assistant message to trigger loading spinner in UI
       setMessages([...newMessages, { role: "assistant", content: "" }]);
 
-      const { response, feedback, translation } = await generateChatResponse(
-        provider,
-        newMessages,
-        systemInstruction,
-      );
+      const {
+        response,
+        feedback,
+        translation,
+        thought,
+        stems,
+        hint,
+        worldLog,
+      } = await generateChatResponse(provider, newMessages, systemInstruction);
 
       const finalAssistantMessage: Message = {
         role: "assistant",
         content: response,
         feedback,
         translation: translation || undefined,
+        thought,
+        stems,
+        hint,
+        worldLog,
       };
       const finalMessages = [...newMessages, finalAssistantMessage];
 

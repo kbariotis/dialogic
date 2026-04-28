@@ -136,6 +136,9 @@ export async function generateChatResponse(
   response: string;
   feedback: string;
   translation: string;
+  stems: string[];
+  hint: string;
+  worldLog: string;
   rawText: string;
 }> {
   const fullText = await generateCompletion(
@@ -168,6 +171,9 @@ export async function generateChatResponse(
     response: parsedContent.response || "",
     feedback: parsedContent.feedback || "",
     translation: parsedContent.translation || "",
+    stems: Array.isArray(parsedContent.stems) ? parsedContent.stems : [],
+    hint: parsedContent.hint || "",
+    worldLog: parsedContent.world_log_update || "",
     rawText: fullText,
   };
 }
